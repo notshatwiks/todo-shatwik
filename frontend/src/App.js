@@ -1,24 +1,28 @@
 import React, { useState, useEffect } from "react";
 
-const API_URL = "http://127.0.0.1:5000/tasks"; // Backend URL
+const backendUrl = "http://127.0.0.1:5000"; 
 
 function App() {
   const [tasks, setTasks] = useState([]);
   const [newTask, setNewTask] = useState("");
 
-  // Fetch tasks on page load
+  
   useEffect(() => {
-    fetch(API_URL)
-      .then((res) => res.json())
+    fetch(`${backendUrl}/tasks`)
+      .then((response) => response.json())
       .then((data) => setTasks(data))
-      .catch((err) => console.error("Error fetching tasks:", err));
+      .catch((error) => console.error("Error fetching tasks:", error));
   }, []);
 
-  // Add a new task
+  
   const addTask = async () => {
-    if (!newTask.trim()) return;
+    if (!newTask.trim()) {
+      alert("Task cannot be empty!");
+      return;
+    }
+
     try {
-      const response = await fetch(API_URL, {
+      const response = await fetch(`${backendUrl}/tasks`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ title: newTask }),
@@ -27,17 +31,20 @@ function App() {
       if (!response.ok) throw new Error("Failed to add task");
 
       const data = await response.json();
-      setTasks([...tasks, { id: data.id, title: newTask, completed: false }]);
-      setNewTask("");
+      setTasks([...tasks, data]);
+      setNewTask(""); // Clear input
     } catch (error) {
       console.error("Error adding task:", error);
     }
   };
 
-  // Delete a task
+  
   const deleteTask = async (id) => {
     try {
-      const response = await fetch(`${API_URL}/${id}`, { method: "DELETE" });
+      const response = await fetch(`${backendUrl}/tasks/${id}`, {
+        method: "DELETE",
+      });
+
       if (!response.ok) throw new Error("Failed to delete task");
 
       setTasks(tasks.filter((task) => task.id !== id));
@@ -51,9 +58,9 @@ function App() {
       <h1>To-Do List</h1>
       <input
         type="text"
+        placeholder="Add new task..."
         value={newTask}
         onChange={(e) => setNewTask(e.target.value)}
-        placeholder="Enter a new task"
       />
       <button onClick={addTask}>Add Task</button>
       <ul>

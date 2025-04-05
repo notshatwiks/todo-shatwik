@@ -1,50 +1,47 @@
 from flask import Flask, request, jsonify
-from flask_sqlalchemy import SQLAlchemy
 from flask_cors import CORS
 
 app = Flask(__name__)
-CORS(app)  # Enable CORS for frontend-backend communication
+CORS(app)  
 
-# Configure SQLite Database
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///tasks.db'
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-db = SQLAlchemy(app)
+tasks = []  
+task_id_counter = 1  
 
-# Define Task Model
-class Task(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    title = db.Column(db.String(200), nullable=False)
-    completed = db.Column(db.Boolean, default=False)
 
-# Initialize the Database
-with app.app_context():
-    db.create_all()
-
-# Get all tasks
 @app.route('/tasks', methods=['GET'])
 def get_tasks():
-    tasks = Task.query.all()
-    return jsonify([{"id": t.id, "title": t.title, "completed": t.completed} for t in tasks])
+    return jsonify(tasks)
 
-# Add a task
+
 @app.route('/tasks', methods=['POST'])
 def add_task():
+    global task_id_counter
     data = request.json
-    new_task = Task(title=data['title'])
-    db.session.add(new_task)
-    db.session.commit()
-    return jsonify({"message": "Task added", "id": new_task.id}), 201
+    if not data or 'title' not in data:
+        return jsonify({'error': 'Title is required'}), 400
+    
+    task = {'id': task_id_counter, 'title': data['title'], 'completed': False}
+    tasks.append(task)
+    task_id_counter += 1
+    return jsonify(task), 201
 
-# Delete a task
+
 @app.route('/tasks/<int:task_id>', methods=['DELETE'])
 def delete_task(task_id):
-    task = Task.query.get(task_id)
-    if not task:
-        return jsonify({"error": "Task not found"}), 404
-    db.session.delete(task)
-    db.session.commit()
-    return jsonify({"message": "Task deleted"}), 200
+    global tasks
+    tasks = [task for task in tasks if task['id'] != task_id]
+    return jsonify({'message': 'Task deleted'}), 200
+
+
+@app.route('/tasks/<int:task_id>', methods=['PUT'])
+def update_task(task_id):
+    data = request.json
+    for task in tasks:
+        if task['id'] == task_id:
+            task['title'] = data.get('title', task['title'])
+            task['completed'] = data.get('completed', task['completed'])
+            return jsonify(task)
+    return jsonify({'error': 'Task not found'}), 404
 
 if __name__ == '__main__':
-    app.run(debug=True)
-
+    app.run(debug=True, port=5000)  
